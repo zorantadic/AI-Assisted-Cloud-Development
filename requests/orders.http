@@ -1,0 +1,16 @@
+@baseUrl = http://127.0.0.1:8000
+
+### Health
+GET {{baseUrl}}/health
+
+### Valid order
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{"product_code":"DEMO-001","quantity":2}
+
+### Invalid quantity: expect 422
+POST {{baseUrl}}/orders
+Content-Type: application/json
+
+{"product_code":"DEMO-001","quantity":0}

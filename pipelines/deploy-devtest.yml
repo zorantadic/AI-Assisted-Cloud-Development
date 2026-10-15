@@ -1,0 +1,56 @@
+# Manual dev/test deployment ONLY. Run after CI passes for the same commit.
+# Requires a separately deployed foundation and verified federated service connection.
+trigger: none
+pr: none
+parameters:
+- name: serviceConnection
+  type: string
+  default: CONFIGURE_ME
+- name: resourceGroup
+  type: string
+  default: CONFIGURE_ME
+- name: registryName
+  type: string
+  default: CONFIGURE_ME
+- name: environmentName
+  type: string
+  default: CONFIGURE_ME
+- name: identityName
+  type: string
+  default: CONFIGURE_ME
+pool:
+  vmImage: ubuntu-latest
+steps:
+- bash: |
+    set -euo pipefail
+    for value in "$RG" "$ACR" "$ENVIRONMENT" "$IDENTITY" "$CONNECTION"; do
+      if [ "$value" = CONFIGURE_ME ] || [ -z "$value" ]; then
+        echo 'Supply verified deployment parameters.'; exit 1
+      fi
+    done
+  displayName: Require configured parameters
+  env:
+    RG: ${{ parameters.resourceGroup }}
+    ACR: ${{ parameters.registryName }}
+    ENVIRONMENT: ${{ parameters.environmentName }}
+    IDENTITY: ${{ parameters.identityName }}
+    CONNECTION: ${{ parameters.serviceConnection }}
+- task: AzureCLI@2
+  displayName: Build image and deploy dev/test
+  inputs:
+    azureSubscription: ${{ parameters.serviceConnection }}
+    scriptType: bash
+    scriptLocation: inlineScript
+    inlineScript: |
+      set -euo pipefail
+      server=$(az acr show --name "$ACR" --query loginServer -o tsv)
+      image="$server/order-api:$BUILD_SOURCEVERSION"
+      az acr build --registry "$ACR" --image "order-api:$BUILD_SOURCEVERSION" .
+      az deployment group create --resource-group "$RG" --template-file infra/app.bicep         --parameters environmentName="$ENVIRONMENT" identityName="$IDENTITY" registryServer="$server" image="$image"         --name "api-$BUILD_BUILDID" --output none
+      url=$(az deployment group show --resource-group "$RG" --name "api-$BUILD_BUILDID" --query properties.outputs.baseUrl.value -o tsv)
+      curl --fail --retry 6 --retry-delay 10 --retry-all-errors "$url/health"
+  env:
+    RG: ${{ parameters.resourceGroup }}
+    ACR: ${{ parameters.registryName }}
+    ENVIRONMENT: ${{ parameters.environmentName }}
+    IDENTITY: ${{ parameters.identityName }}

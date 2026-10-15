@@ -1,0 +1,9 @@
+{
+  "organizationUrl": "https://dev.azure.com/ai-cloud-development-lab",
+  "projectName": "AI-Assisted-Cloud-Development",
+  "tenantId": "CONFIGURE_ME",
+  "subscriptionId": "CONFIGURE_ME",
+  "resourceGroup": "CONFIGURE_ME",
+  "location": "CONFIGURE_ME",
+  "serviceConnection": "CONFIGURE_ME"
+}

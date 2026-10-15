@@ -1,0 +1,31 @@
+# Azure Repos PR validation is configured by a branch build-validation policy.
+trigger:
+  branches:
+    include: [main, 'feature/*']
+pr: none
+pool:
+  vmImage: ubuntu-latest
+steps:
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.13'
+- script: python -m pip install -r requirements-dev.lock.txt
+  displayName: Install locked dependencies
+- script: python -m ruff check app tests
+  displayName: Lint
+- script: python -m pytest -q --junitxml=artifacts/tests.junit.xml
+  displayName: Test behavior
+- task: PublishTestResults@2
+  condition: succeededOrFailed()
+  inputs:
+    testResultsFormat: JUnit
+    testResultsFiles: artifacts/tests.junit.xml
+    failTaskOnFailedTests: true
+- bash: |
+    set -euo pipefail
+    az bicep install
+    az bicep build --file infra/foundation.bicep --outfile /tmp/foundation.json
+    az bicep build --file infra/app.bicep --outfile /tmp/app.json
+  displayName: Compile Bicep (no Azure deployment)
+- bash: docker build --tag order-api:$(Build.SourceVersion) .
+  displayName: Build local container image (no push)
