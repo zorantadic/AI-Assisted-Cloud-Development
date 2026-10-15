@@ -1,0 +1,33 @@
+{
+    "Actions":  [
+                    "Microsoft.Resources/subscriptions/resourceGroups/read",
+                    "Microsoft.Resources/deployments/read",
+                    "Microsoft.Resources/deployments/write",
+                    "Microsoft.Resources/deployments/validate/action",
+                    "Microsoft.Resources/deployments/whatIf/action",
+                    "Microsoft.Resources/deployments/operations/read",
+                    "Microsoft.Resources/deployments/operationStatuses/read",
+                    "Microsoft.App/containerApps/read",
+                    "Microsoft.App/containerApps/write",
+                    "Microsoft.App/containerApps/revisions/read",
+                    "Microsoft.App/managedEnvironments/read",
+                    "Microsoft.App/managedEnvironments/join/action",
+                    "Microsoft.ManagedIdentity/userAssignedIdentities/read",
+                    "Microsoft.ContainerRegistry/registries/read"
+                ],
+    "Name":  "AI Cloud Devtest App Deployer",
+    "Description":  "Deploy the course Container App within rg-ai-cloud-dev; no role management, foundation writes, or deletion.",
+    "IsCustom":  true,
+    "NotDataActions":  [
+
+                       ],
+    "NotActions":  [
+
+                   ],
+    "DataActions":  [
+
+                    ],
+    "AssignableScopes":  [
+                             "/subscriptions/4d992bb0-6909-470c-bbef-896082984f67/resourceGroups/rg-ai-cloud-dev"
+                         ]
+}

@@ -3,11 +3,151 @@
 > Current user decision: ACR is the selected registry; GHCR is no longer selected. Build/push runs
 > on a Microsoft-hosted Azure DevOps agent, with no local Docker and no ACR Tasks. Container Apps
 > pulls from ACR with its user-assigned managed identity. Initial Azure Repos upload and hosted CI
-> are now authorized as recorded below; Azure validation/what-if evidence is preserved.
-> ACR is not confirmed free. No purchases, Azure resource creation or deployment are authorized.
-> Commit/push scope for this step is Azure Repos main only; no GitHub push.
+> succeeded as recorded below; earlier Azure validation/what-if evidence is preserved.
+> ACR and Log Analytics are retained. The reviewed seven-resource foundation deployment and
+> its five required provider registrations are authorized for the confirmed subscription below.
+> The current API step authorizes a dedicated federated deployment identity/service connection,
+> scoped role assignments, manual hosted deployment, and reviewed commits/pushes to Azure Repos.
+> Local Docker, ACR Tasks, foundation redeployment and changes to other projects remain excluded.
+> Earlier restrictions below describe their original stages.
 > Confirmed region: `centralus`; resource group: `rg-ai-cloud-dev`. Budget remains unconfirmed.
 > Other architecture is unchanged.
+
+## Baseline API deployment (2026-10-15 America/Chicago)
+
+**In progress: connection and scoped permissions configured; hosted application deployment pending.**
+
+Working directory and Git root: `C:\Projects\AI-Assisted-Cloud-Development`. The prior uncommitted
+foundation results are preserved. Verified operator/tenant/subscription match the foundation record.
+
+- Service connection: **aicloud-devtest-wif**, ID `bf4283f7-4724-403f-a2fd-c262e6e8cad8`,
+  ARM WorkloadIdentityFederation, project-specific (not shared).
+- Dedicated deployment identity: **aicloud-devtest-deployer** in rg-ai-cloud-dev, centralus.
+  Resource ID: `/subscriptions/4d992bb0-6909-470c-bbef-896082984f67/resourceGroups/rg-ai-cloud-dev/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aicloud-devtest-deployer`.
+  Client ID: `01e4cff0-d954-4fe8-8422-971b29de0c6a`.
+  Principal ID: `71189a3e-c87d-4ea8-bfe7-978737191f8a`.
+- Federated credential: `azure-devops-devtest`; audience `api://AzureADTokenExchange`.
+  Actual generated issuer: `https://login.microsoftonline.com/b7fddbde-dfdf-425e-a785-97d3b91909a0/v2.0`.
+  Actual generated subject: `/eid1/c/pub/t/3tv9t9_fXkKnhZfTuRkJoA/a/rISbSSETf0KqFyZ8ppdXmA/sc/a54ca4a6-92c6-4754-a67f-0ec8446a8547/bf4283f7-4724-403f-a2fd-c262e6e8cad8`.
+  Both values came from Azure DevOps and were used verbatim; no client secret was created.
+- Manual deployment pipeline **3**, **AI-Assisted-Cloud-Development-Deploy-Devtest**, is bound to
+  this project's Azure repository and `pipelines/deploy-devtest.yml`. Creation skipped the first run.
+  Only pipeline 3 is authorized for the connection. The authorization GET lists only pipeline 3;
+  `allPipelines` is null (no all-pipeline grant), not an invented explicit false response.
+- ACR read-back: `LegacyRegistryPermissions` (registry RBAC); ARM-audience authentication
+  `enabled`; admin credentials disabled. Existing app identity's ACR-scoped AcrPull is preserved.
+
+| Deployment identity role | Actual assignment scope | Role / assignment ID |
+| --- | --- | --- |
+| AI Cloud Devtest App Deployer (custom) | `/subscriptions/4d992bb0-6909-470c-bbef-896082984f67/resourceGroups/rg-ai-cloud-dev` | Role `6fb939c8-f691-4aa2-a3b0-32c92d25e594`; assignment `0f4b5afb-38e2-43d7-9e63-60c4779fbb4e` |
+| AcrPush | The same RG's `Microsoft.ContainerRegistry/registries/aiclouddkldarnzw2qiw` only | Role `8311e382-0749-4cb8-b61a-304f252e45ec`; assignment `a58d1b3b-3d90-4056-a94e-7fe134f4654e` |
+| Managed Identity Operator | The same RG's `Microsoft.ManagedIdentity/userAssignedIdentities/aicloud-api-identity` only | Role `f1a07417-d97a-45cb-824c-7a7467783830`; assignment `308e0bd9-425d-4b3f-b86d-925cde398744` |
+
+The custom role is recorded in `config/deployment-role.json`; its assignable scope is only this RG.
+It permits app read/write, environment read/join, foundation identity/registry reads, and ARM
+deployment validation/what-if/execution reads/writes. It grants no foundation resource writes,
+deletes, role management or subscription-wide permissions. Managed Identity Operator is confined
+to the runtime identity, so its built-in auxiliary permissions do not apply across the RG.
+The deployment identity is separate from the runtime identity and has no Storage data role.
+
+The manual pipeline requires a successful CI pipeline 2 run for its exact main-branch source SHA.
+It repeats dependency integrity, lint and behavior tests, checks registry authentication, builds
+and pushes on Microsoft-hosted Ubuntu, resolves the actual ACR digest, validates the unchanged
+application Bicep and inspects full what-if before execution. The initial-deployment guard permits
+exactly one app Create with the reviewed identity/environment, HTTPS, digest, CPU/memory and scale;
+it fails on modifications, deletions, additional creates, diagnostics or unexpected resource IDs.
+It intentionally does not authorize subsequent app updates. Application code and the audit exercise
+are unchanged. Run results, image digest, endpoint and log evidence will be recorded after execution.
+
+Implementation references: [Microsoft federation automation](https://learn.microsoft.com/en-us/azure/devops/pipelines/release/automate-service-connections?view=azure-devops),
+[managed-identity image pull](https://learn.microsoft.com/en-us/azure/container-apps/managed-identity-image-pull).
+The federation sequence follows the documented identity -> connection -> actual issuer/subject
+-> federated credential order. The documentation's broad sample role grant was replaced by the
+bounded roles above.
+
+## Foundation deployment execution (2026-10-15 America/Chicago)
+
+**Result: Succeeded. All seven reviewed foundation objects were created and verified.**
+
+The user authorized the reviewed foundation deployment while retaining ACR and Log Analytics:
+subscription `4d992bb0-6909-470c-bbef-896082984f67`, resource group `rg-ai-cloud-dev`, region
+`centralus`. Working directory and Git root were confirmed as
+`C:\Projects\AI-Assisted-Cloud-Development`; the initial working tree was clean. The signed-in
+operator was `zoran@zoranitprofessional.onmicrosoft.com`, tenant
+`b7fddbde-dfdf-425e-a785-97d3b91909a0`, in the confirmed Enabled subscription. Provider/resource/deployment CLI commands used that
+explicit subscription; direct ARM reads used its resource IDs. No DevOps project or pipeline was recreated.
+
+### Registration, refreshed gates and deployment
+
+- Registered exactly Microsoft.App, Microsoft.ContainerRegistry, Microsoft.Storage,
+  Microsoft.ManagedIdentity and Microsoft.OperationalInsights. Each was NotRegistered before
+  this step and was read back Registered before validation. No other provider registration was
+  requested. The resource group was absent and both reviewed global resource names were available.
+- Refreshed full provider/RBAC validation succeeded (error null), correlation
+  `28d58a20-bf0e-43e3-8371-8d31d1436b12`.
+- Refreshed full-payload what-if: **7 Create, 0 Modify, 0 Delete**, no diagnostics. Exact IDs,
+  names, centralus placement, SKUs, security settings, retention, log link and role scope matched
+  the seven reviewed creations. No change types were hidden or excluded.
+- Used the unchanged `infra/lab.bicepparam` -> `infra/lab.bicep` -> `infra/foundation.bicep`
+  entry point/module. Source hashes were checked before submission and after provisioning;
+  no template, parameter or architecture substitution was made.
+- Subscription deployment: **foundation-20261015**, **Succeeded**, error null.
+- Deployment ID: `/subscriptions/4d992bb0-6909-470c-bbef-896082984f67/providers/Microsoft.Resources/deployments/foundation-20261015`.
+- Nested deployment: **baseline-foundation**, **Succeeded**, error null.
+- Nested deployment ID: `/subscriptions/4d992bb0-6909-470c-bbef-896082984f67/resourceGroups/rg-ai-cloud-dev/providers/Microsoft.Resources/deployments/baseline-foundation`.
+- Correlation ID: `01c3d703-4457-4ba1-9c38-130f29646520`.
+- ARM terminal-state timestamp: **2026-10-15 09:31:01 CDT** (14:31:01 UTC).
+- Duration: **16 minutes 12.8 seconds**. The environment temporarily reported Waiting; it later
+  reached Succeeded. No deployment retry, cleanup or permission workaround was performed.
+
+### Actual resource IDs and configurations
+
+| Object | Actual resource ID | Verified result/configuration |
+| --- | --- | --- |
+| Resource group | `/subscriptions/4d992bb0-6909-470c-bbef-896082984f67/resourceGroups/rg-ai-cloud-dev` | Succeeded; centralus; course/devtest tags |
+| ACR | `/subscriptions/4d992bb0-6909-470c-bbef-896082984f67/resourceGroups/rg-ai-cloud-dev/providers/Microsoft.ContainerRegistry/registries/aiclouddkldarnzw2qiw` | Succeeded; Basic; admin disabled; aiclouddkldarnzw2qiw.azurecr.io |
+| Storage | `/subscriptions/4d992bb0-6909-470c-bbef-896082984f67/resourceGroups/rg-ai-cloud-dev/providers/Microsoft.Storage/storageAccounts/aiclouddkldarnzw2qiw` | Succeeded; StorageV2 / Standard_LRS; TLS1_2; HTTPS only; public blob and shared-key access disabled |
+| User-assigned identity | `/subscriptions/4d992bb0-6909-470c-bbef-896082984f67/resourcegroups/rg-ai-cloud-dev/providers/Microsoft.ManagedIdentity/userAssignedIdentities/aicloud-api-identity` | GET verified; creation operation Succeeded; principal 7662094f-69d6-450a-80cd-fd8030ec80ca |
+| Log Analytics | `/subscriptions/4d992bb0-6909-470c-bbef-896082984f67/resourceGroups/rg-ai-cloud-dev/providers/Microsoft.OperationalInsights/workspaces/aicloud-logs` | Succeeded; PerGB2018; retention 30 days; customer ID 20d3b0d1-db90-4db1-9882-606abba560a3 |
+| Container Apps environment | `/subscriptions/4d992bb0-6909-470c-bbef-896082984f67/resourceGroups/rg-ai-cloud-dev/providers/Microsoft.App/managedEnvironments/aicloud-environment` | Succeeded; centralus (API display: Central US); one Consumption workload profile, no dedicated profile |
+| AcrPull assignment | `/subscriptions/4d992bb0-6909-470c-bbef-896082984f67/resourcegroups/rg-ai-cloud-dev/providers/Microsoft.ContainerRegistry/registries/aiclouddkldarnzw2qiw/providers/Microsoft.Authorization/roleAssignments/d33eff47-f660-508d-9315-47ec6ebe8183` | GET verified; creation operation Succeeded; role 7f951dda-4ed3-4680-a7ca-43fe172d538d; exact ACR scope |
+
+Identity client ID: `f83d87a1-d67e-46b0-b924-0d45e6d69522`. The AcrPull assignment's
+`principalId` exactly equals the app identity principal, its scope exactly equals this ACR ID,
+and its role definition is AcrPull. No Contributor/Owner or broader-scope role was granted.
+Identity and role GET responses do not expose a provisioningState here; their recorded **Succeeded**
+status comes from the deployment operations, not an invented GET property.
+
+The environment's `appLogsConfiguration.destination` is **log-analytics** and its customer ID
+**20d3b0d1-db90-4db1-9882-606abba560a3** matches the actual aicloud-logs workspace. Final
+GET reports one **Consumption** workload profile, no dedicated profiles, no additional infrastructure
+resource group and no deployment error. This verifies the configuration link; application log
+ingestion and managed-identity image pulling are not claimed as runtime-tested.
+
+Final target-group inventory contains exactly the five reviewed service resources (ACR, Storage,
+identity, workspace, environment), plus the separately verified resource group and registry-scoped
+role assignment: **seven foundation objects**. The nested ARM deployment is metadata, not an eighth
+service. No Container App/API or unexpected target-group service resource was present.
+
+Sanitized, ignored local evidence: `artifacts/foundation-deployment-20261015/` contains
+`provider-registration.json`, `preflight.json`, `deployment-activity.json` and `readback.json`.
+These record source hashes, matched what-if, IDs, configurations, relationships and successful
+operations. Keys, tokens and raw secret-bearing responses are not saved.
+
+### Remaining stages and boundaries
+
+There is no remaining provisioning blocker for this foundation at final read-back. The API is
+**not deployed**. A future application stage still needs separately authorized scoped deployment
+credentials/service connection, an actual ACR image push and immutable digest, application
+validation/deployment and runtime checks for health/orders, managed-identity image pull and logs.
+The earlier passing CI image build did not push an image and does not prove these runtime paths.
+No budget/spend-limit enforcement is claimed.
+
+No local Docker, API deployment, service connection creation, deployment-pipeline execution,
+resource deletion, commit or push occurred in this step. Existing CI and DevOps configuration
+were left unchanged. Only this tracked status document is modified; generated deployment evidence
+remains ignored. Earlier resource-absence/NotRegistered/no-deployment statements below describe
+historical checks and do not override this completed foundation result.
 
 ## Initial Azure Repos upload and CI execution (2026-10-15 America/Chicago)
 

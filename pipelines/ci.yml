@@ -13,7 +13,7 @@ steps:
   displayName: Install locked dependencies
 - script: python -m pip check
   displayName: Check dependency integrity
-- script: python -m ruff check app tests
+- script: python -m ruff check app tests scripts/deployment_checks.py
   displayName: Lint
 - script: python -m pytest -q --junitxml=artifacts/tests.junit.xml
   displayName: Test behavior

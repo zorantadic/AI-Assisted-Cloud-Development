@@ -6,7 +6,7 @@ pr: none
 parameters:
 - name: serviceConnection
   type: string
-  default: CONFIGURE_ME
+  default: aicloud-devtest-wif
 - name: resourceGroup
   type: string
   default: rg-ai-cloud-dev
@@ -35,9 +35,15 @@ steps:
 - task: UsePythonVersion@0
   inputs:
     versionSpec: '3.13'
+- bash: python scripts/deployment_checks.py ci
+  displayName: Require CI pipeline 2 success for this exact commit
+  env:
+    SYSTEM_ACCESSTOKEN: $(System.AccessToken)
 - script: python -m pip install -r requirements-dev.lock.txt
   displayName: Install locked dependencies
-- script: python -m ruff check app tests
+- script: python -m pip check
+  displayName: Check dependency integrity
+- script: python -m ruff check app tests scripts/deployment_checks.py
   displayName: Lint deployment commit
 - script: python -m pytest -q --junitxml=artifacts/tests.junit.xml
   displayName: Test deployment commit
@@ -71,6 +77,9 @@ steps:
       set -euo pipefail
       actual_subscription=$(az account show --query id -o tsv)
       [[ "$actual_subscription" == "$SUBSCRIPTION_ID" ]] || { echo 'Service connection subscription mismatch'; exit 1; }
+      mkdir -p artifacts/deployment
+      az acr show --name "$ACR" --resource-group "$RG" --output json > artifacts/deployment/registry.json
+      python scripts/deployment_checks.py registry artifacts/deployment/registry.json
       server=$(az acr show --name "$ACR" --query loginServer -o tsv)
       tag="$BUILD_SOURCEVERSION-$BUILD_BUILDID"
       az acr login --name "$ACR"
@@ -79,9 +88,19 @@ steps:
       digest=$(az acr repository show --name "$ACR" --image "order-api:$tag" --query digest -o tsv)
       [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo 'Invalid image digest'; exit 1; }
       image="$server/order-api@$digest"
-      az deployment group create --resource-group "$RG" --template-file infra/app.bicep \
-        --parameters location="$LOCATION" appName="$APP_NAME" environmentName="$ENVIRONMENT" identityName="$IDENTITY" registryServer="$server" image="$image" \
-        --name "api-$BUILD_BUILDID" --output none
+      export EXPECTED_IMAGE="$image"
+      printf '%s\n' "$image" > artifacts/deployment/image.txt
+      args=(--resource-group "$RG" --template-file infra/app.bicep
+        --parameters location="$LOCATION" appName="$APP_NAME" environmentName="$ENVIRONMENT"
+        identityName="$IDENTITY" registryServer="$server" image="$image" --name "api-$BUILD_BUILDID")
+      az deployment group validate "${args[@]}" --validation-level Provider --output json > artifacts/deployment/validation.json
+      az deployment group what-if "${args[@]}" --validation-level Provider --result-format FullResourcePayloads --no-pretty-print --output json > artifacts/deployment/what-if.json
+      python scripts/deployment_checks.py plan artifacts/deployment/what-if.json
+      az deployment group create "${args[@]}" --output none
+      az deployment group show --resource-group "$RG" --name "api-$BUILD_BUILDID" --output json > artifacts/deployment/deployment.json
+      app_id="/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RG/providers/Microsoft.App/containerApps/$APP_NAME"
+      az rest --method get --url "https://management.azure.com$app_id?api-version=2024-03-01" --output json > artifacts/deployment/app.json
+      python scripts/deployment_checks.py app artifacts/deployment/app.json
       url=$(az deployment group show --resource-group "$RG" --name "api-$BUILD_BUILDID" --query properties.outputs.baseUrl.value -o tsv)
       curl --fail --retry 6 --retry-delay 10 --retry-all-errors "$url/health"
       pwsh -NoProfile -File scripts/04-Smoke-Test.ps1 -BaseUrl "$url" -ExpectedEnvironment devtest
@@ -93,3 +112,9 @@ steps:
     APP_NAME: ${{ parameters.appName }}
     LOCATION: ${{ parameters.location }}
     SUBSCRIPTION_ID: ${{ parameters.subscriptionId }}
+- task: PublishPipelineArtifact@1
+  displayName: Publish deployment evidence
+  condition: succeededOrFailed()
+  inputs:
+    targetPath: artifacts/deployment
+    artifact: deployment-evidence

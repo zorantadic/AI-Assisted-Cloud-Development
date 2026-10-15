@@ -13,5 +13,5 @@
   "subscriptionId": "4d992bb0-6909-470c-bbef-896082984f67",
   "resourceGroup": "rg-ai-cloud-dev",
   "location": "centralus",
-  "serviceConnection": "CONFIGURE_ME"
+  "serviceConnection": "aicloud-devtest-wif"
 }
