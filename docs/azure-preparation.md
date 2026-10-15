@@ -2,7 +2,8 @@
 The selected organization is Zoran-DevOps-Lab: https://dev.azure.com/Zoran-DevOps-Lab.
 The Private/Git/Basic project AI-Assisted-Cloud-Development now exists, with its default Git
 repository, in this organization. Project ID: 5007e9df-c7e7-4945-8f8c-b5dcf4b6bc29.
-Initial repository upload and CI execution are authorized; deployment remains unauthorized.
+Initial repository upload and CI succeeded: pipeline 2/run 2 validated the recorded code commit.
+See preparation-status.md for the exact SHA and task results. Deployment remains unauthorized.
 The user verified the private-project Microsoft-hosted Free tier in this organization:
 one parallel job, 1,800 minutes/month, 0 used. This capacity is user-reported, not CLI-verified.
 See docs/preparation-status.md for evidence and the current proposal.
@@ -27,7 +28,7 @@ Sequence:
    service connection with this RBAC registry; runtime managed identity keeps only AcrPull.
 7. Run CI for the exact commit, then manually run deployment for that commit. Deployment repeats lint
    and behavior tests before the hosted-agent build/push, pins the image digest, and checks health/orders.
-   Azure DevOps pipeline execution and environment checks still require live verification.
+   Initial CI execution is verified; deployment execution and environment checks remain unverified.
 
 Managed identity image pull reference:
 https://learn.microsoft.com/en-us/azure/container-apps/managed-identity-image-pull

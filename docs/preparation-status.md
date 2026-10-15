@@ -2,9 +2,10 @@
 
 > Current user decision: ACR is the selected registry; GHCR is no longer selected. Build/push runs
 > on a Microsoft-hosted Azure DevOps agent, with no local Docker and no ACR Tasks. Container Apps
-> pulls from ACR with its user-assigned managed identity. Local preparation and Azure validation/
-> what-if are authorized; no build or deployment is authorized.
-> ACR is not confirmed free. No purchases, resource creation, deployment, commit or push authorized.
+> pulls from ACR with its user-assigned managed identity. Initial Azure Repos upload and hosted CI
+> are now authorized as recorded below; Azure validation/what-if evidence is preserved.
+> ACR is not confirmed free. No purchases, Azure resource creation or deployment are authorized.
+> Commit/push scope for this step is Azure Repos main only; no GitHub push.
 > Confirmed region: `centralus`; resource group: `rg-ai-cloud-dev`. Budget remains unconfirmed.
 > Other architecture is unchanged.
 
@@ -27,8 +28,47 @@ three Bicep templates, and builds a container image without pushing it. It has n
 Azure deployment, registry push or service-connection requirement. The separate deployment YAML
 remains manual and will not be registered or run in this step.
 
-Commit, pipeline/run identifiers and actual hosted results will be recorded after execution.
-This upload does not establish Azure deployment or application runtime readiness.
+### Verified upload and hosted CI results
+
+| Evidence | Actual result |
+| --- | --- |
+| Reviewed/tested commit | `9fb72fbff56caa1510f977456a573c0ea7936d47` |
+| Git identity | Existing `Cloud Lab <cloud-lab@example.invalid>`; unchanged |
+| Upload | `main` pushed only to `azure`; remote ref read-back matched the full tested SHA |
+| GitHub origin | `https://github.com/zorantadic/AI-Assisted-Cloud-Development.git`; preserved, not pushed |
+| Azure remote | `https://dev.azure.com/Zoran-DevOps-Lab/AI-Assisted-Cloud-Development/_git/AI-Assisted-Cloud-Development` |
+| Pipeline | `AI-Assisted-Cloud-Development-CI`, ID **2** |
+| Definition binding | Azure repository `dd8b4af5-37d7-494d-9167-a8a197250565`, `pipelines/ci.yml`, main |
+| Run | ID **2**, **succeeded**, sourceVersion exactly the reviewed/tested SHA above |
+| Run URL | https://dev.azure.com/Zoran-DevOps-Lab/5007e9df-c7e7-4945-8f8c-b5dcf4b6bc29/_build/results?buildId=2 |
+| Execution | Microsoft-hosted Azure Pipelines queue, `ubuntu-latest`, Python **3.13.16** |
+| Dependency installation/integrity | Locked development install succeeded; `pip check`: no broken requirements |
+| Ruff | Passed; all checks passed |
+| Pytest | **16 passed, 1 warning**, 0.57 seconds on the hosted agent |
+| Published results | JUnit publication succeeded; test run ID 2 completed with **16 total / 16 passed / 0 incomplete** |
+| Bicep | foundation.bicep, app.bicep and lab.bicep compiled successfully; no Azure deployment |
+| Container | Hosted-agent image build succeeded; tag `order-api:9fb72fbff56caa1510f977456a573c0ea7936d47`; no push |
+| Completion | October 15, 2026, **08:59:23 CDT** (13:59:23 UTC) |
+
+The CLI pipeline creation queued the one initial run. Its definition and source commit were
+verified before inspecting task logs; no duplicate run or rerun was queued. The repository was
+empty before upload; no force push or divergent-history replacement occurred. The existing Git
+identity and GitHub remote were retained. The temporary repair script, virtual environment,
+credentials/local environment files, generated artifacts and backups are excluded from Git;
+only the eleven explicitly reviewed course files were staged for the tested commit. Existing
+application behavior and tests were not changed.
+
+Nonblocking warnings: the existing FastAPI/Starlette TestClient httpx deprecation warning, and
+a hosted-image notice about an upcoming ubuntu-latest migration. Neither caused a failed task.
+No access/capacity blocker occurred; no capacity was purchased and monthly counters were not
+re-read. Container-build success is not an image push, deployment or running-container smoke test.
+
+This results receipt changes documentation only and is committed/pushed with `[skip ci]` to
+avoid a redundant hosted run. The successful validation belongs to the exact code commit above,
+not a claim that the receipt commit was separately tested by CI. No deployment pipeline was
+created or run, no service connection/provider registration/Azure resource was created, and
+Customer-Portal was not modified. Azure cost approval, foundation creation, registry/image push,
+managed-identity pull and deployed-runtime acceptance remain separate outstanding stages.
 
 ## Verified Azure DevOps project and workspace correction (2026-10-15 America/Chicago)
 
@@ -178,12 +218,11 @@ historical where they differ from the current target and results in this section
 1. Subscription 1, centralus and rg-ai-cloud-dev are confirmed. Budget remains unapproved.
 2. Foundation validation/what-if succeeded as recorded above; resolve deployment prerequisites
    and obtain resource-creation approval before any deployment.
-3. The Private/Git/Basic course project and default repository in Zoran-DevOps-Lab are created
-   and verified as recorded above. Federated service-connection configuration remains outstanding
-   and requires separate authorization; no pipeline or service connection was created in this step.
-   Proposed relationship: Azure Repos becomes the course pipeline/PR repository; retain GitHub
-   `origin` and add a separately named Azure remote only after agreeing the arrangement.
-   No import, push, remote change, commit, or branch policy has been performed.
+3. The Private/Git/Basic course project and repository are verified, main is uploaded to Azure
+   Repos, and CI pipeline 2/run 2 passed for the recorded code commit. GitHub origin is preserved;
+   a separate azure remote is configured. No GitHub push, import or branch-policy change occurred.
+   Federated service-connection configuration and deployment execution remain outstanding and
+   require separate authorization. The deployment YAML was uploaded but not registered or run.
 4. Scope deployment permissions to the dedicated lab; keep foundation role-assignment permission
    separate from routine application deployment. Runtime identity receives registry AcrPull only.
    Confirm the actual federated principal and required build/deployment roles before assignment.
