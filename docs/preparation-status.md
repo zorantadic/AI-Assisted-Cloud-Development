@@ -15,7 +15,11 @@
 
 ## Baseline API deployment (2026-10-15 America/Chicago)
 
-**In progress: connection and scoped permissions configured; hosted application deployment pending.**
+**Result: Succeeded. The baseline API is deployed, the healthy active revision runs the private
+ACR image by digest, HTTPS smoke checks pass, and correlated application logs reached aicloud-logs.**
+
+This is the current result. Statements about pending deployment or authorization in the dated
+foundation/preparation sections below describe those earlier stages.
 
 Working directory and Git root: `C:\Projects\AI-Assisted-Cloud-Development`. The prior uncommitted
 foundation results are preserved. Verified operator/tenant/subscription match the foundation record.
@@ -57,13 +61,87 @@ application Bicep and inspects full what-if before execution. The initial-deploy
 exactly one app Create with the reviewed identity/environment, HTTPS, digest, CPU/memory and scale;
 it fails on modifications, deletions, additional creates, diagnostics or unexpected resource IDs.
 It intentionally does not authorize subsequent app updates. Application code and the audit exercise
-are unchanged. Run results, image digest, endpoint and log evidence will be recorded after execution.
+are unchanged. The successful runs and runtime evidence are recorded below.
 
 Implementation references: [Microsoft federation automation](https://learn.microsoft.com/en-us/azure/devops/pipelines/release/automate-service-connections?view=azure-devops),
 [managed-identity image pull](https://learn.microsoft.com/en-us/azure/container-apps/managed-identity-image-pull).
 The federation sequence follows the documented identity -> connection -> actual issuer/subject
 -> federated credential order. The documentation's broad sample role grant was replaced by the
 bounded roles above.
+
+### Exact source, hosted execution and runtime verification
+
+| Evidence | Verified result |
+| --- | --- |
+| Deployment source SHA | `62ef8628de19fce2bcced9622787266a51466a81` |
+| Source upload | Reviewed commit pushed only to Azure Repos main after ancestry verification; GitHub origin preserved |
+| CI | Pipeline **2**, [run **3**](https://dev.azure.com/Zoran-DevOps-Lab/5007e9df-c7e7-4945-8f8c-b5dcf4b6bc29/_build/results?buildId=3), **succeeded** for exactly that SHA |
+| CI checks | Python 3.13.16 on Microsoft-hosted Ubuntu; locked dependency install, pip check, Ruff, **29 tests**, JUnit publication, three Bicep compilations and image build passed |
+| Deployment | Pipeline **3**, [run **4**](https://dev.azure.com/Zoran-DevOps-Lab/5007e9df-c7e7-4945-8f8c-b5dcf4b6bc29/_build/results?buildId=4), **succeeded** for exactly that SHA; manual trigger |
+| Deployment gates | Exact-commit CI check, repeated dependency/lint/29-test checks, workload federation login, registry authentication checks, hosted Docker build/push, validation, what-if, app read-back and existing PowerShell smoke script all passed |
+| ACR tag | `order-api:62ef8628de19fce2bcced9622787266a51466a81-4` |
+| Actual ACR/deployed digest | `sha256:51986077f0254fd851cf9e28796c34bb62a5440e6794d1dfc36e7f48f5ea0417` |
+| Deployed image | `aiclouddkldarnzw2qiw.azurecr.io/order-api@sha256:51986077f0254fd851cf9e28796c34bb62a5440e6794d1dfc36e7f48f5ea0417` |
+| Provider validation | Succeeded, error null; correlation `e93e7868-9666-4950-a916-5ee7669d93a5` |
+| Full what-if | **1 Create: aicloud-order-api; 0 Modify; 0 Delete**. Four Ignore entries were the existing environment, ACR and two identities; no unexpected IDs or diagnostics |
+| ARM deployment ID | `/subscriptions/4d992bb0-6909-470c-bbef-896082984f67/resourceGroups/rg-ai-cloud-dev/providers/Microsoft.Resources/deployments/api-4` |
+| ARM result | Succeeded; correlation `995db8b3-2760-4f7a-9c1e-ae1454cc000b`; duration 19.64 seconds; terminal timestamp 2026-10-15 15:16:00 UTC |
+| App resource ID | `/subscriptions/4d992bb0-6909-470c-bbef-896082984f67/resourceGroups/rg-ai-cloud-dev/providers/Microsoft.App/containerApps/aicloud-order-api` |
+| Active revision | `aicloud-order-api--wkvvz1z`; active=true, Healthy, Provisioned; latest revision equals latest ready revision; 100% traffic |
+| API URL | https://aicloud-order-api.calmpond-4d0b6792.centralus.azurecontainerapps.io |
+| Actual app settings | centralus, existing aicloud-environment, 0.25 vCPU, 0.5 GiB, min 0 / max 1 replica, Single revision, HTTPS external ingress on target port 8000, APP_ENVIRONMENT=devtest |
+| Runtime image identity | aicloud-api-identity, principal `7662094f-69d6-450a-80cd-fd8030ec80ca`; only its existing ACR-scoped AcrPull assignment |
+| Run completion | CI 15:13:38 UTC / 10:13:38 CDT; deployment 15:16:26 UTC / 10:16:26 CDT on October 15 |
+
+The actual registry digest was independently read back and exactly matches the active revision.
+The registry's admin and anonymous pulls are both disabled. The app's registry configuration
+selects only aicloud-api-identity, with empty username/passwordSecretRef and no application secrets.
+Together with the healthy running private-image revision and successful HTTPS requests, this
+verifies the configured managed-identity pull path in operation. No separate token-exchange trace
+is claimed. A bounded system-log query returned zero rows at the time of collection; it is not
+used as proof of a particular pull event.
+
+The Consumption environment is unchanged; the app has the planned resource limits. One replica
+was running at read-back (`RunningAtMaxScale` with maximum 1). This does not prove idle scale-to-zero
+timing. The foundation deployment still has its original timestamp and correlation ID; it was not
+redeployed. Final RG inventory contains the original five service resources plus the authorized
+deployment identity and Container App, with no additional service resources.
+
+The existing `scripts/04-Smoke-Test.ps1` passed on the hosted Ubuntu agent using synthetic
+DEMO-001 / quantity 2. An independent HTTPS check at 15:18 UTC returned health HTTP **200**,
+status **ok**, environment **devtest**, and order HTTP **201** with the expected product/quantity,
+UUID order ID, creation timestamp, UUID X-Correlation-ID and Cache-Control **no-store**.
+Synthetic order: `57596616-00e8-44dd-bcee-e927835acf8f`.
+Correlation ID: `6a56185e-595e-4c14-978a-da948f66eff9`.
+
+Log Analytics link was read back as destination `log-analytics`, workspace customer ID
+`20d3b0d1-db90-4db1-9882-606abba560a3` (aicloud-logs). An initial query had no rows; a later
+query after ingestion found **both** `order_created` and `http_request_completed` with HTTP 201,
+the exact correlation ID above, and revision `aicloud-order-api--wkvvz1z`, timestamp
+**2026-10-15T15:18:09.0003456Z**. The order_created event also matches the returned order ID.
+This verifies application-log ingestion, beyond the previously verified configuration link.
+Query: `ContainerAppConsoleLogs_CL`, filtered to this app and the synthetic correlation/order
+events within one hour. No new logging feature or audit implementation was added.
+
+Sanitized local evidence remains ignored under `artifacts/api-deployment-20261015/`:
+connection/federation metadata, pipeline authorization, CI/deployment task results and run IDs,
+downloaded hosted `deployment-evidence` (validation, full what-if, image, app and deployment),
+independent app/revision read-back, smoke responses, console/system query results and the
+verification summary. No credentials, tokens or registry/workspace keys are stored.
+The initial connection setup required two configuration corrections before success: remove a local
+UTF-8 BOM rejected by the CLI, then remove unsupported resourceGroup connection metadata.
+RBAC scopes stayed narrow. CI and deployment each succeeded on their first actual run; no retry,
+duplicate run, permission expansion or test weakening was needed.
+
+**Remaining blockers: none for this baseline deployment.** The audit course feature and Storage
+data permissions remain absent by design. Budget enforcement and idle scaling timing are not
+claimed as verified. Future application updates need a separately reviewed what-if allowance:
+the current guard intentionally permits only the initial app creation. No local Docker, ACR Tasks,
+capacity purchase, foundation redeployment or other-project change occurred.
+
+The final documentation receipt is committed/pushed to Azure Repos with `[skip ci]`. That receipt
+does not change the tested/deployed source SHA above and does not trigger another CI or deployment
+run. GitHub origin is preserved and was not pushed.
 
 ## Foundation deployment execution (2026-10-15 America/Chicago)
 
@@ -248,7 +326,7 @@ is preserved. No remote requests or changes are performed by this correction.
 The Azure configuration, foundation validation/what-if results, cost limitations and remaining
 Azure prerequisites below retain their existing evidence and scope.
 
-## Current target validation and what-if (2026-10-14 America/Chicago)
+## Historical target validation and what-if (2026-10-14 America/Chicago)
 
 ### Successful checks
 - Before Azure operations, `az account show` and subscription discovery confirmed Subscription 1,
@@ -354,7 +432,7 @@ historical where they differ from the current target and results in this section
   managed-identity pull, runtime responses and deployment remain unverified. No cloud commands,
   Docker builds, deployments, commits or pushes were executed in this preparation step.
 
-## Required next decisions and evidence
+## Historical next decisions and evidence (before foundation/API execution)
 1. Subscription 1, centralus and rg-ai-cloud-dev are confirmed. Budget remains unapproved.
 2. Foundation validation/what-if succeeded as recorded above; resolve deployment prerequisites
    and obtain resource-creation approval before any deployment.
