@@ -4,7 +4,7 @@ param appName string = 'aicloud-order-api'
 param environmentName string
 param identityName string
 param registryServer string
-@description('Existing immutable image reference, for example registry.azurecr.io/order-api:commit-sha')
+@description('Existing image pinned by digest, for example registry.azurecr.io/order-api@sha256:...')
 param image string
 resource environment 'Microsoft.App/managedEnvironments@2024-03-01' existing = {
   name: environmentName

@@ -42,6 +42,6 @@ requirements*.txt declare direct dependency versions; requirements*.lock.txt loc
 runtime/dev dependency sets. Revalidate and regenerate locks when adding the audit SDK.
 Dependencies are checked during preparation; this does not replace Course 2 security evidence.
 Do not paste credentials or production/customer data into the repository or AI prompts.
-Learner repository publication will follow the agreed Pluralsight-managed handoff process.
+See docs/preparation-status.md for current preparation evidence and remaining blockers.
 
 Testing reference: https://fastapi.tiangolo.com/tutorial/testing/

@@ -16,3 +16,21 @@ infra/*.json
 !infra/*.example.json
 
 /Repair-Python313.ps1
+
+# Local credentials, environments, backups, and editor/merge artifacts.
+.azure/
+.aws/
+.venv*/
+venv/
+env/
+.envrc
+backups/
+*.bak
+*.backup
+*.orig
+*.rej
+*.tmp
+*~
+*.pem
+*.pfx
+*.p12

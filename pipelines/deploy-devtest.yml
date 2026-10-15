@@ -1,5 +1,6 @@
-# Manual dev/test deployment ONLY. Run after CI passes for the same commit.
+# Manual dev/test deployment ONLY. Tests below gate the checked-out commit.
 # Requires a separately deployed foundation and verified federated service connection.
+# Docker runs only on the Microsoft-hosted agent; ACR stores images, not builds.
 trigger: none
 pr: none
 parameters:
@@ -8,19 +9,44 @@ parameters:
   default: CONFIGURE_ME
 - name: resourceGroup
   type: string
-  default: CONFIGURE_ME
+  default: rg-ai-cloud-dev
+- name: location
+  type: string
+  default: centralus
+- name: subscriptionId
+  type: string
+  default: 4d992bb0-6909-470c-bbef-896082984f67
 - name: registryName
   type: string
-  default: CONFIGURE_ME
+  default: aiclouddkldarnzw2qiw
 - name: environmentName
   type: string
-  default: CONFIGURE_ME
+  default: aicloud-environment
 - name: identityName
   type: string
-  default: CONFIGURE_ME
+  default: aicloud-api-identity
+- name: appName
+  type: string
+  default: aicloud-order-api
 pool:
   vmImage: ubuntu-latest
 steps:
+- checkout: self
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.13'
+- script: python -m pip install -r requirements-dev.lock.txt
+  displayName: Install locked dependencies
+- script: python -m ruff check app tests
+  displayName: Lint deployment commit
+- script: python -m pytest -q --junitxml=artifacts/tests.junit.xml
+  displayName: Test deployment commit
+- task: PublishTestResults@2
+  condition: succeededOrFailed()
+  inputs:
+    testResultsFormat: JUnit
+    testResultsFiles: artifacts/tests.junit.xml
+    failTaskOnFailedTests: true
 - bash: |
     set -euo pipefail
     for value in "$RG" "$ACR" "$ENVIRONMENT" "$IDENTITY" "$CONNECTION"; do
@@ -36,21 +62,34 @@ steps:
     IDENTITY: ${{ parameters.identityName }}
     CONNECTION: ${{ parameters.serviceConnection }}
 - task: AzureCLI@2
-  displayName: Build image and deploy dev/test
+  displayName: Build on hosted agent, push to ACR and deploy dev/test
   inputs:
     azureSubscription: ${{ parameters.serviceConnection }}
     scriptType: bash
     scriptLocation: inlineScript
     inlineScript: |
       set -euo pipefail
+      actual_subscription=$(az account show --query id -o tsv)
+      [[ "$actual_subscription" == "$SUBSCRIPTION_ID" ]] || { echo 'Service connection subscription mismatch'; exit 1; }
       server=$(az acr show --name "$ACR" --query loginServer -o tsv)
-      image="$server/order-api:$BUILD_SOURCEVERSION"
-      az acr build --registry "$ACR" --image "order-api:$BUILD_SOURCEVERSION" .
-      az deployment group create --resource-group "$RG" --template-file infra/app.bicep         --parameters environmentName="$ENVIRONMENT" identityName="$IDENTITY" registryServer="$server" image="$image"         --name "api-$BUILD_BUILDID" --output none
+      tag="$BUILD_SOURCEVERSION-$BUILD_BUILDID"
+      az acr login --name "$ACR"
+      docker build --tag "$server/order-api:$tag" .
+      docker push "$server/order-api:$tag"
+      digest=$(az acr repository show --name "$ACR" --image "order-api:$tag" --query digest -o tsv)
+      [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]] || { echo 'Invalid image digest'; exit 1; }
+      image="$server/order-api@$digest"
+      az deployment group create --resource-group "$RG" --template-file infra/app.bicep \
+        --parameters location="$LOCATION" appName="$APP_NAME" environmentName="$ENVIRONMENT" identityName="$IDENTITY" registryServer="$server" image="$image" \
+        --name "api-$BUILD_BUILDID" --output none
       url=$(az deployment group show --resource-group "$RG" --name "api-$BUILD_BUILDID" --query properties.outputs.baseUrl.value -o tsv)
       curl --fail --retry 6 --retry-delay 10 --retry-all-errors "$url/health"
+      pwsh -NoProfile -File scripts/04-Smoke-Test.ps1 -BaseUrl "$url" -ExpectedEnvironment devtest
   env:
     RG: ${{ parameters.resourceGroup }}
     ACR: ${{ parameters.registryName }}
     ENVIRONMENT: ${{ parameters.environmentName }}
     IDENTITY: ${{ parameters.identityName }}
+    APP_NAME: ${{ parameters.appName }}
+    LOCATION: ${{ parameters.location }}
+    SUBSCRIPTION_ID: ${{ parameters.subscriptionId }}

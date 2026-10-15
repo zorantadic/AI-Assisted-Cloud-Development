@@ -1,9 +1,17 @@
 {
-  "organizationUrl": "https://dev.azure.com/ai-cloud-development-lab",
+  "organizationUrl": "https://dev.azure.com/Zoran-DevOps-Lab",
   "projectName": "AI-Assisted-Cloud-Development",
-  "tenantId": "CONFIGURE_ME",
-  "subscriptionId": "CONFIGURE_ME",
-  "resourceGroup": "CONFIGURE_ME",
-  "location": "CONFIGURE_ME",
+  "registryProvider": "ACR",
+  "registryName": "aiclouddkldarnzw2qiw",
+  "environmentName": "aicloud-environment",
+  "identityName": "aicloud-api-identity",
+  "appName": "aicloud-order-api",
+  "buildHost": "AzureDevOpsMicrosoftHosted",
+  "agentImage": "ubuntu-latest",
+  "imagePullAuthentication": "UserAssignedManagedIdentity",
+  "tenantId": "b7fddbde-dfdf-425e-a785-97d3b91909a0",
+  "subscriptionId": "4d992bb0-6909-470c-bbef-896082984f67",
+  "resourceGroup": "rg-ai-cloud-dev",
+  "location": "centralus",
   "serviceConnection": "CONFIGURE_ME"
 }

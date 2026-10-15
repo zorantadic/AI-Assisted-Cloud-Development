@@ -11,6 +11,8 @@ steps:
     versionSpec: '3.13'
 - script: python -m pip install -r requirements-dev.lock.txt
   displayName: Install locked dependencies
+- script: python -m pip check
+  displayName: Check dependency integrity
 - script: python -m ruff check app tests
   displayName: Lint
 - script: python -m pytest -q --junitxml=artifacts/tests.junit.xml
@@ -26,6 +28,7 @@ steps:
     az bicep install
     az bicep build --file infra/foundation.bicep --outfile /tmp/foundation.json
     az bicep build --file infra/app.bicep --outfile /tmp/app.json
+    az bicep build --file infra/lab.bicep --outfile /tmp/lab.json
   displayName: Compile Bicep (no Azure deployment)
 - bash: docker build --tag order-api:$(Build.SourceVersion) .
-  displayName: Build local container image (no push)
+  displayName: Build image on Microsoft-hosted agent (no push)
