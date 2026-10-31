@@ -1,0 +1,27 @@
+Local repository:
+C:\Projects\AI-Assisted-Cloud-Development
+
+Azure DevOps repository:
+https://dev.azure.com/Zoran-DevOps-Lab/AI-Assisted-Cloud-Development/
+
+Inspect both repositories using my existing Azure DevOps access.
+
+LOCAL:
+Identify the application's purpose, test coverage, Bicep configuration, and pipeline definitions. Check the current Git branch, commit, and local changes.
+
+AZURE DEVOPS:
+Check the main branch and compare its relevant files with the local repository. Review the latest CI and dev/test deployment runs, including their results and associated commits.
+
+REPORT:
+Identify differences, confirm which version has CI evidence, and note what remains unverified.
+
+Create a concise Markdown report at:
+docs/codex-project-overview.md
+
+Keep it under 200 words and reference relevant files, commits, and pipeline runs.
+
+Only this new Markdown file may be created. Do not modify existing files, install packages, run tests, build, deploy, commit, or push.
+
+If the report already exists, stop without overwriting it. If information is inaccessible, report that limitation.
+
+Summarize the findings briefly in chat.
