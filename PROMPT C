@@ -1,0 +1,16 @@
+Planning only. Do not edit, create, or delete any files and do not run
+commands, tests, deployments, commits, or pushes.
+
+Identify the applicable repository guidance, including AGENTS.md and the
+project-defined Builder instructions in ai/builder.md. Explicitly read
+ai/builder.md and course/02-order-audit-request.md.
+
+For the FUTURE order-audit request, propose a bounded plan only:
+- name candidate files and why each might need attention;
+- preserve the existing API contract;
+- identify assumptions, dependencies, runtime configuration, and identity
+  permissions requiring human confirmation;
+- list local-test, pipeline, and Azure runtime evidence needed later.
+
+Do not implement the order audit. Distinguish what exists today from work
+that has only been requested. If the proposed plan broadens scope, flag it.
