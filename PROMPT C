@@ -1,5 +1,6 @@
-Planning only. Do not edit, create, or delete any files and do not run
-commands, tests, deployments, commits, or pushes.
+Planning only. Read-only commands to inspect local project files are allowed.
+Do not edit, create, or delete any files or run tests, deployments,
+commits, or pushes.
 
 Identify the applicable repository guidance, including AGENTS.md and the
 project-defined Builder instructions in ai/builder.md. Explicitly read
